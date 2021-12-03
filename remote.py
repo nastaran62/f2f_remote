@@ -193,7 +193,7 @@ def main():
     subject_id, task_id = get_input_parameters()
     experiment_id = str(subject_id).zfill(2) + "-" + str(task_id).zfill(2)
 
-    http_client = http.client.HTTPConnection("127.0.0.1:9331", timeout=3)
+    http_client = http.client.HTTPConnection("0.0.0.0:9331", timeout=3)
 
     # Make delay for initializing all processes
     time.sleep(5)
