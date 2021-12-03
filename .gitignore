@@ -3,12 +3,7 @@ __pycache__
 venv
 env
 .pytest_cache
-.coverage
 dist/
-build/
-octopus_sensing.egg-info/
-docs_build/
-.vscode
 *.pyc
 *.avi
 *.edf
@@ -16,4 +11,5 @@ docs_build/
 *.wav
 *.csv
 *.mp4
+.vscode
 
