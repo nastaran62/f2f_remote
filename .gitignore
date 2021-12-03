@@ -1,0 +1,19 @@
+# .gitignore
+__pycache__
+venv
+env
+.pytest_cache
+.coverage
+dist/
+build/
+octopus_sensing.egg-info/
+docs_build/
+.vscode
+*.pyc
+*.avi
+*.edf
+*.log
+*.wav
+*.csv
+*.mp4
+

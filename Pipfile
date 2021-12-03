@@ -5,6 +5,8 @@ name = "pypi"
 
 [packages]
 octopus-sensing = "*"
+octopus-sensing-monitoring = "*"
+octopus-sensing-visualizer = "*"
 
 [dev-packages]
 

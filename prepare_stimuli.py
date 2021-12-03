@@ -6,7 +6,7 @@ from typing import List
 
 import pathlib
 
-def get_stimuli_list(subject_id: str, path: str):
+def prepare_stimuli_list(subject_id: str):
     '''
     Prepare stimuli order for two settings
 
@@ -14,10 +14,8 @@ def get_stimuli_list(subject_id: str, path: str):
     ----------
     subject_id: str
         A unique ID for each sucject(participant)
-    
-    path: str
-        A path to all stimuli categories
     '''
+    path = "stimuli/stimuli_categories"
     categories = os.listdir(path)
     categories.sort()
     random_categories = []
@@ -57,4 +55,4 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--subject_id", help="The subject ID", default=0)
     args = parser.parse_args()
     subject_id: str = args.subject_id
-    get_stimuli_list(subject_id, path)
+    prepare_stimuli_list(subject_id)
