@@ -14,8 +14,10 @@ from octopus_sensing.device_coordinator import DeviceCoordinator
 from octopus_sensing.devices import AudioStreaming
 from octopus_sensing.devices import CameraStreaming
 from octopus_sensing.devices import BrainFlowOpenBCIStreaming
-#from octopus_sensing.devices.shimmer3_streaming import Shimmer3Streaming#
+from octopus_sensing.devices.shimmer3_streaming import Shimmer3Streaming
 
+from octopus_sensing.monitoring_endpoint import MonitoringEndpoint
+from octopus_sensing.preprocessing.preprocess_devices import preprocess_devices
 from octopus_sensing.device_message_endpoint import DeviceMessageHTTPEndpoint
 
 def get_input_parameters():
@@ -43,9 +45,10 @@ def main():
                                     channels_order=["Fp1", "Fp2", "F7", "F3", 
                                                     "F4", "F8", "T3", "C3",
                                                     "C4", "T4", "T5", "P3", 
-                                                    "P4", "T6", "O1", "O2"])
+                                                    "P4", "T6", "O1", "O2"],
+                                    serial_port="/dev/ttyUSB1")
     
-    #shimmer = Shimmer3Streaming(name="Shimmer", output_path=output_path)
+    shimmer = Shimmer3Streaming(name="Shimmer", output_path=output_path)
     audio = AudioStreaming(0, name="Audio", output_path=output_path)
 
     camera = \
@@ -56,10 +59,13 @@ def main():
                         image_width=640,
                         image_height=480)
     device_coordinator = DeviceCoordinator()
-    device_coordinator.add_devices([camera, audio, openbci])
+    device_coordinator.add_devices([camera, audio, openbci, shimmer])
+
+    monitoring_endpoint = MonitoringEndpoint(device_coordinator)
+    monitoring_endpoint.start()
 
     # Add your devices
-    message_endpoint = DeviceMessageHTTPEndpoint(device_coordinator)
+    message_endpoint = DeviceMessageHTTPEndpoint(device_coordinator, port=9332)
     print("start listening")
     message_endpoint.start()
 
@@ -70,5 +76,11 @@ def main():
             break
     
     message_endpoint.stop()
+    monitoring_endpoint.stop()
+
+    preprocess_devices(device_coordinator,
+                       "preprocessed_remote_output",
+                       openbci_sampling_rate=125,
+                       signal_preprocess=True)
 
 main()

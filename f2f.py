@@ -21,7 +21,7 @@ from octopus_sensing.windows.timer_window import TimerWindow
 from octopus_sensing.devices import AudioStreaming
 from octopus_sensing.devices import CameraStreaming
 from octopus_sensing.devices import BrainFlowOpenBCIStreaming
-#from octopus_sensing.devices.shimmer3_streaming import Shimmer3Streaming#
+from octopus_sensing.devices.shimmer3_streaming import Shimmer3Streaming
 from octopus_sensing.device_coordinator import DeviceCoordinator
 from octopus_sensing.monitoring_endpoint import MonitoringEndpoint
 from octopus_sensing.preprocessing.preprocess_devices import preprocess_devices
@@ -87,6 +87,8 @@ class BackgroudWindow(Gtk.Window):
 
         self.image_window = ImageWindow("image_window", monitor_no=1)
         self.image_window.set_image(background_path)
+        self.navigator_image_window = ImageWindow("image_window", monitor_no=0)
+        self.navigator_image_window.set_image(background_path)
 
 
     def show(self, *args):
@@ -97,6 +99,7 @@ class BackgroudWindow(Gtk.Window):
         self.fullscreen()
         self.show_all()
         self.image_window.show_window()
+        self.navigator_image_window.show_window()
 
         GLib.timeout_add_seconds(5, self._show_message)
         GLib.timeout_add_seconds(1, self._move_image_window)
@@ -126,6 +129,7 @@ class BackgroudWindow(Gtk.Window):
         '''
         logging.info("Fixation cross {0}".format(datetime.datetime.now()))
         self.image_window.set_image("images/fixation_cross.jpg")
+        self.navigator_image_window.set_image("images/fixation_cross.jpg")
         message = \
             start_message(self._experiment_id,
                           self._stimuli_list[self._index][:-4])
@@ -141,6 +145,7 @@ class BackgroudWindow(Gtk.Window):
                                                 datetime.datetime.now()))
         image_path = STIMULI_PATH + self._stimuli_list[self._index]
         self.image_window.set_image(image_path)
+        self.navigator_image_window.set_image(image_path)
         GLib.timeout_add_seconds(6, self._show_timer)
 
     def _show_timer(self, *args):
@@ -150,6 +155,7 @@ class BackgroudWindow(Gtk.Window):
         logging.info("Start of Conversation {0} - {1}".format(self._stimuli_list[self._index],
                                                               datetime.datetime.now()))
 
+        image_path = STIMULI_PATH + self._stimuli_list[self._index]
         timer = TimerWindow("Timer", message=EMOTIONS[self._stimuli_list[self._index][0]],
                             width=600,
                             font_size=20)
@@ -170,6 +176,9 @@ class BackgroudWindow(Gtk.Window):
         self.image_window.set_image("images/done_image.jpg")
         self.image_window.show_and_destroy_window(3)
         self.image_window.connect("destroy", self._terminate)
+        self.navigator_image_window.set_image("images/done_image.jpg")
+        self.navigator_image_window.show_and_destroy_window(3)
+        self.navigator_image_window.connect("destroy", self._terminate)
 
     def _terminate(self, *args):
         logging.info("End time{0}".format(datetime.datetime.now()))
@@ -194,7 +203,7 @@ def main():
     output_path = "output/p{0}".format(subject_id)
     os.makedirs(output_path, exist_ok=False)
 
-
+    
     openbci = \
         BrainFlowOpenBCIStreaming(name="eeg",
                                   output_path=output_path,
@@ -203,7 +212,8 @@ def main():
                                                    "F4", "F8", "T3", "C3",
                                                    "C4", "T4", "T5", "P3", 
                                                    "P4", "T6", "O1", "O2"])
-    #shimmer = Shimmer3Streaming(name="Shimmer", output_path=output_path)
+    
+    shimmer = Shimmer3Streaming(name="Shimmer", output_path=output_path)
     audio = AudioStreaming(2, name="Audio", output_path=output_path)
 
     camera = \
@@ -213,7 +223,7 @@ def main():
                         image_width=640,
                         image_height=480)
     device_coordinator = DeviceCoordinator()
-    device_coordinator.add_devices([camera, openbci, audio])
+    device_coordinator.add_devices([audio, camera, openbci, shimmer])
 
     # Make delay for initializing all processes
     time.sleep(5)
