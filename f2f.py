@@ -13,6 +13,7 @@ import sys
 import time
 import argparse
 import csv
+from scipy import signal
 
 from screeninfo import get_monitors
 sys.path.insert(0, '../octopus-sensing/')
@@ -42,7 +43,7 @@ EMOTIONS = {"1": "High-Valence, High-Arousal",
             "4": "Low-Valence, Low-Arousal"}
 
 def read_stimuli_order(subject_id):
-    stimuli_order_file_path = "stimuli/f2f/p{}_stimuli.csv".format(subject_id)
+    stimuli_order_file_path = "stimuli/f2f/p{}_stimuli.csv".format(str.zfill(subject_id,2))
     if not os.path.exists(stimuli_order_file_path):
         prepare_stimuli_list(subject_id)
     order = []
@@ -118,7 +119,7 @@ class BackgroudWindow(Gtk.Window):
             MessageButtonWindow("Info", message)
         message.show()
 
-        if self._index >= 2:
+        if self._index >= 8:
             message.connect("destroy", self._done)
         else:
             message.connect("destroy", self._show_fixation_cross)
@@ -197,11 +198,16 @@ def get_input_parameters():
 
 def main():
     main_camera = "/dev/v4l/by-id/usb-Intel_R__RealSense_TM__Depth_Camera_415_Intel_R__RealSense_TM__Depth_Camera_415-video-index0"
-    main_camera = "/dev/v4l/by-id/usb-046d_081b_97E6A7D0-video-index0"
+
+    #main_camera = "/dev/v4l/by-id/usb-046d_081b_97E6A7D0-video-index0"
     subject_id, task_id = get_input_parameters()
     experiment_id = str(subject_id).zfill(2) + "-" + str(task_id).zfill(2)
     output_path = "output/p{0}".format(subject_id)
-    os.makedirs(output_path, exist_ok=False)
+    if not os.path.exists(output_path):
+        os.makedirs(output_path, exist_ok=False)
+    else:
+        output_path = output_path + str(time.time())[8:10]
+        os.makedirs(output_path, exist_ok=False)
 
     
     openbci = \
@@ -211,9 +217,11 @@ def main():
                                   channels_order=["Fp1", "Fp2", "F7", "F3", 
                                                    "F4", "F8", "T3", "C3",
                                                    "C4", "T4", "T5", "P3", 
-                                                   "P4", "T6", "O1", "O2"])
+                                                   "P4", "T6", "O1", "O2"],
+                                  serial_port="/dev/ttyUSB0")
     
-    shimmer = Shimmer3Streaming(name="Shimmer", output_path=output_path)
+    
+    shimmer = Shimmer3Streaming(name="shimmer", output_path=output_path)
     audio = AudioStreaming(2, name="Audio", output_path=output_path)
 
     camera = \
@@ -223,7 +231,7 @@ def main():
                         image_width=640,
                         image_height=480)
     device_coordinator = DeviceCoordinator()
-    device_coordinator.add_devices([audio, camera, openbci, shimmer])
+    device_coordinator.add_devices([audio, camera, shimmer, openbci])
 
     # Make delay for initializing all processes
     time.sleep(5)
@@ -236,7 +244,8 @@ def main():
     preprocess_devices(device_coordinator,
                        "preprocessed_output",
                        openbci_sampling_rate=125,
-                       signal_preprocess=True)
+                       signal_preprocess=True,
+                       shimmer3_sampling_rate=128)
 
 
 main()

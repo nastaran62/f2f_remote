@@ -31,7 +31,7 @@ def get_input_parameters():
 
 def main():
     device_coordinator = DeviceCoordinator()
-    main_camera = "/dev/v4l/by-id/usb-046d_081b_97E6A7D0-video-index0"
+    main_camera = "/dev/v4l/by-id/usb-Intel_R__RealSense_TM__Depth_Camera_415_Intel_R__RealSense_TM__Depth_Camera_415-video-index0"
     subject_id, task_id = get_input_parameters()
     experiment_id = str(subject_id).zfill(2) + "-" + str(task_id).zfill(2)
     output_path = "output_remote/p{0}".format(subject_id)
@@ -46,10 +46,10 @@ def main():
                                                     "F4", "F8", "T3", "C3",
                                                     "C4", "T4", "T5", "P3", 
                                                     "P4", "T6", "O1", "O2"],
-                                    serial_port="/dev/ttyUSB1")
+                                    serial_port="/dev/ttyUSB0")
     
-    shimmer = Shimmer3Streaming(name="Shimmer", output_path=output_path)
-    audio = AudioStreaming(0, name="Audio", output_path=output_path)
+    shimmer = Shimmer3Streaming(name="shimmer", output_path=output_path)
+    audio = AudioStreaming(0, name="audio", output_path=output_path)
 
     camera = \
         CameraStreaming(name="webcam",
@@ -71,8 +71,8 @@ def main():
 
     
     while True:
-        key = input("Please enter qt to stop")
-        if key == "qt":
+        key = input("Please enter q to stop")
+        if key == "q":
             break
     
     message_endpoint.stop()
@@ -81,6 +81,7 @@ def main():
     preprocess_devices(device_coordinator,
                        "preprocessed_remote_output",
                        openbci_sampling_rate=125,
-                       signal_preprocess=True)
+                       signal_preprocess=True,
+                       shimmer3_sampling_rate=128)
 
 main()
