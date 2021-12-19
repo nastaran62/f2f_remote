@@ -7,6 +7,7 @@ Steps:
 '''
 
 import os
+import time
 import sys
 import argparse
 sys.path.insert(0, '../octopus-sensing/')
@@ -34,10 +35,13 @@ def main():
     main_camera = "/dev/v4l/by-id/usb-Intel_R__RealSense_TM__Depth_Camera_415_Intel_R__RealSense_TM__Depth_Camera_415-video-index0"
     subject_id, task_id = get_input_parameters()
     experiment_id = str(subject_id).zfill(2) + "-" + str(task_id).zfill(2)
-    output_path = "output_remote/p{0}".format(subject_id)
-    os.makedirs(output_path, exist_ok=False)
+    output_path = "output_remote/p{0}".format(str.zfill(subject_id,2))
+    if not os.path.exists(output_path):
+        os.makedirs(output_path, exist_ok=False)
+    else:
+        output_path = output_path + str(time.time())[8:10]
+        os.makedirs(output_path, exist_ok=False)
 
-    
     openbci = \
         BrainFlowOpenBCIStreaming(name="eeg",
                                     output_path=output_path,
@@ -49,7 +53,9 @@ def main():
                                     serial_port="/dev/ttyUSB0")
     
     shimmer = Shimmer3Streaming(name="shimmer", output_path=output_path)
-    audio = AudioStreaming(0, name="audio", output_path=output_path)
+    
+    
+    audio = AudioStreaming(2, name="audio", output_path=output_path)
 
     camera = \
         CameraStreaming(name="webcam",
@@ -65,7 +71,7 @@ def main():
     monitoring_endpoint.start()
 
     # Add your devices
-    message_endpoint = DeviceMessageHTTPEndpoint(device_coordinator, port=9332)
+    message_endpoint = DeviceMessageHTTPEndpoint(device_coordinator, port=9331)
     print("start listening")
     message_endpoint.start()
 
@@ -77,6 +83,10 @@ def main():
     
     message_endpoint.stop()
     monitoring_endpoint.stop()
+    try:
+        device_coordinator.terminate()
+    except:
+        pass
 
     preprocess_devices(device_coordinator,
                        "preprocessed_remote_output",

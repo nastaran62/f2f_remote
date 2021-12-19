@@ -43,7 +43,8 @@ EMOTIONS = {"1": "High-Valence, High-Arousal",
             "4": "Low-Valence, Low-Arousal"}
 
 def read_stimuli_order(subject_id):
-    stimuli_order_file_path = "stimuli/f2f/p{}_stimuli.csv".format(str.zfill(subject_id,2))
+    stimuli_order_file_path = "stimuli/f2f/p{}_stimuli.csv".format(str(subject_id).zfill(2))
+    print(stimuli_order_file_path)
     if not os.path.exists(stimuli_order_file_path):
         prepare_stimuli_list(subject_id)
     order = []
@@ -51,6 +52,7 @@ def read_stimuli_order(subject_id):
         reader = csv.reader(csv_file)
         for row in reader:
             order.append(row[0])
+    print(order)
     return order
 
 STIMULI_PATH = "stimuli/all_images/"
@@ -202,7 +204,7 @@ def main():
     #main_camera = "/dev/v4l/by-id/usb-046d_081b_97E6A7D0-video-index0"
     subject_id, task_id = get_input_parameters()
     experiment_id = str(subject_id).zfill(2) + "-" + str(task_id).zfill(2)
-    output_path = "output/p{0}".format(subject_id)
+    output_path = "output/p{0}".format(str(subject_id).zfill(2))
     if not os.path.exists(output_path):
         os.makedirs(output_path, exist_ok=False)
     else:
@@ -231,7 +233,7 @@ def main():
                         image_width=640,
                         image_height=480)
     device_coordinator = DeviceCoordinator()
-    device_coordinator.add_devices([audio, camera, shimmer, openbci])
+    device_coordinator.add_devices([audio, camera, openbci, shimmer])
 
     # Make delay for initializing all processes
     time.sleep(5)

@@ -7,15 +7,13 @@ Steps:
 '''
 
 import os
-
 import logging
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
+import time
 import datetime
-import sys
 import http.client
-import msgpack
-sys.path.insert(0, '../octopus-sensing/')
-from octopus_sensing.windows.timer_window import TimerWindow
-from windows import ImageWindow, MessageButtonWindow
+import pickle
+from windows import ImageWindow, MessageButtonWindow, TimerWindow
 from prepare_stimuli import prepare_stimuli_list
 import time
 import argparse
@@ -33,7 +31,8 @@ EMOTIONS = {"1": "High-Valence, High-Arousal",
             "4": "Low-Valence, Low-Arousal"}
 
 def read_stimuli_order(subject_id):
-    stimuli_order_file_path = "stimuli/f2f/p{}_stimuli.csv".format(subject_id)
+    stimuli_order_file_path = "stimuli/remote/p{}_stimuli.csv".format(str(subject_id).zfill(2))
+    print(stimuli_order_file_path)
     if not os.path.exists(stimuli_order_file_path):
         prepare_stimuli_list(subject_id)
     order = []
@@ -41,13 +40,15 @@ def read_stimuli_order(subject_id):
         reader = csv.reader(csv_file)
         for row in reader:
             order.append(row[0])
+    print(order)
     return order
 
 STIMULI_PATH = "stimuli/all_images/"
 
 class BackgroudWindow(Gtk.Window):
-    def __init__(self, experiment_id, subject_id, http_client):
-        self._http_client = http_client
+    def __init__(self, experiment_id, subject_id, host):
+        self._host = host
+        self._http_client = http.client.HTTPConnection(self._host, timeout=3)
         os.makedirs("logs", exist_ok=True)
         time_str = datetime.datetime.strftime(datetime.datetime.now(),
                                               "%Y-%m-%dT%H-%M-%S")
@@ -117,15 +118,37 @@ class BackgroudWindow(Gtk.Window):
         '''
         logging.info("Fixation cross {0}".format(datetime.datetime.now()))
         self.image_window.set_image("images/fixation_cross.jpg")
-        self._http_client.request("POST", "/",
-                                  body=msgpack.packb({'type': 'START',
-                                  'experiment_id': self._experiment_id,
-                                  'stimulus_id': self._stimuli_list[self._index][:-4]}),
-                                  headers={'Accept': 'application/msgpack'})
-        response = self._http_client.getresponse()
-        assert response.status == 200
+
+        logging.info(f"Sending START. Stimulus: {self._stimuli_list[self._index][:-4]}")
+        self.__post_trigger({
+            'type': 'START',
+            'experiment_id': self._experiment_id,
+            'stimulus_id': self._stimuli_list[self._index][:-4]})
 
         GLib.timeout_add_seconds(3, self._show_stimuli)
+
+    def __post_trigger(self, msg_dict, retries=60):
+        try:
+            self._http_client.request("POST", "/",
+                            body=pickle.dumps(msg_dict),
+                            headers={'Accept': 'application/pickle'})
+            response = self._http_client.getresponse()
+            if response.status != 200:
+                logging.error("Sending start trigger. Got HTTP status: {0} {1}".format(response.status, response.reason))
+        except Exception as err:
+            if retries == 0:
+                retry_msg = "Gave up."
+            else:
+                retry_msg = "Re-trying."
+            logging.error(f"Sending start failed. {retry_msg}. Error: {err}")
+            if retries > 0:
+                time.sleep(1)
+                try:
+                    # re-creating the connection, in case we've lost the connection
+                    self._http_client = http.client.HTTPConnection(self._host, timeout=3)
+                except Exception as err:
+                    logging.error(f"Failed to re-create the HTTP connection: {err}")
+                self.__post_trigger(msg_dict, retries=retries - 1)
 
     def _show_stimuli(self, *args):
         '''
@@ -151,25 +174,20 @@ class BackgroudWindow(Gtk.Window):
         timer.connect("destroy", self._questionnaire)
 
     def _questionnaire(self, *args):
-        self._http_client.request("POST", "/",
-                                body=msgpack.packb({'type': 'STOP',
-                                'experiment_id': self._experiment_id,
-                                'stimulus_id': self._stimuli_list[self._index][:-4]}),
-                                headers={'Accept': 'application/msgpack'})
-        response = self._http_client.getresponse()
-        assert response.status == 200
+        logging.info(f"Sending STOP. Stimulus: {self._stimuli_list[self._index][:-4]}")
+        self.__post_trigger({
+            'type': 'STOP',
+            'experiment_id': self._experiment_id,
+            'stimulus_id': self._stimuli_list[self._index][:-4]})
         self._index += 1
         self._show_message(message="Please answer the questionnaire.")
 
     def _done(self, *args):
-
-        self._http_client.request("POST", "/",
-                        body=msgpack.packb({'type': 'TERMINATE',
-                                            'experiment_id': self._experiment_id,
-                                            'stimulus_id': self._stimuli_list[self._index][:-4]}),
-                        headers={'Accept': 'application/msgpack'})
-        response = self._http_client.getresponse()
-        assert response.status == 200
+        logging.info("Sending TERMINATE.")
+        self.__post_trigger({
+            'type': 'TERMINATE',
+            'experiment_id': self._experiment_id,
+            'stimulus_id': 0})
         self.image_window.set_image("images/done_image.jpg")
         self.image_window.show_and_destroy_window(3)
         self.image_window.connect("destroy", self._terminate)
@@ -193,12 +211,10 @@ def main():
     subject_id, task_id = get_input_parameters()
     experiment_id = str(subject_id).zfill(2) + "-" + str(task_id).zfill(2)
 
-    http_client = http.client.HTTPConnection("0.0.0.0:9332", timeout=3)
-
     # Make delay for initializing all processes
     time.sleep(5)
 
-    main_window = BackgroudWindow(experiment_id, subject_id, http_client)
+    main_window = BackgroudWindow(experiment_id, subject_id, "172.24.16.32:9331")
     main_window.show()
 
 
